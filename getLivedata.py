@@ -200,7 +200,7 @@ def getMoreInformation(df):
 				if debug:
 					print("no bathroom data found")
 
-			if df.at[i,'sqft'] == 0:
+			if df.at[i,'sqft'] < 0:
 				attrText = attrText.strip()
 				idx=attrText.find("ft2")
 				if idx>0:
@@ -211,17 +211,20 @@ def getMoreInformation(df):
 						df.at[i,'sqft'] = 0
 
 		attributeString=''
-		spans = html_soup.find_all('span',class_='')
+		#pattrs=html_soup.find_all('p', class_='attrgroup')
+		#for p in pattrs:
+		#spans = p.findChildren('span',class_='', attr={'id': '', 'class': ''})
+		spans = html_soup.find_all('span',class_='',attrs={'id':'', 'class':''})
 		for span in spans:
 			try:
 				attr = span.text
+				attr = attr.replace(' ','')
 				if len(attr) > 8:
 					attributeString += attr[:8]+"|"
 				elif len(attr)>1 and len(attr) < 9:
 					attributeString += attr+"|"
 			except:
 				next
-
 
 #		attrData = html_soup.find_all('p', class_='attrgroup')
 #		print(attrData)
@@ -357,7 +360,8 @@ def main():
 
 	store = pd.HDFStore('data.h5','w')
 	store['df'] = topLevel
-	topLevel.to_csv('debug.csv')
+	if debug:
+		topLevel.to_csv('debug.csv')
 	store.close()
 
 
