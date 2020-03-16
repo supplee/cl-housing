@@ -1,6 +1,6 @@
 # cl-housing
 
-This is a flexible, predictive modeler of the craigslist rental market of your choosing coded in python using.  It will soon be expanded to take data from other sources as well.  The modeler scrapes posts from the craigslist market of your choosing, and then creates and updates a regression to assess how "fair" the pricing is for posted after training.
+This is a flexible, predictive modeler of the craigslist rental market of your choosing coded in python using.  It will soon be expanded to take data from other sources as well.  The modeler scrapes posts from the craigslist market of your choosing, and then creates and updates a regression to assess how "fair" the pricing is by comparing the difference between actual rent and expected rent.
 
 ## Getting Started
 
