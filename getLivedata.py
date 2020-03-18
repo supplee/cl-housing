@@ -19,7 +19,7 @@ numberofListings = 1200 # 10 pages
 myURL = "https://sfbay.craigslist.org/search/pen/apa?hasPic=1&availabilityMode=0&sale_date=all+dates"
 debug = 0
 moreDebug = 0
-fileName = 'data.h5'
+fileName = 'data.parquet'
 writeMode = 'merge'
 
 # Apartment data structure
@@ -175,14 +175,15 @@ def getPostData(baseURL='',n=1200):
 
 	return posts
 
-# Load an HDF5 dataframe from disk
-def getDataFromDisk(fileName='data.h5'):
-	store = pd.HDFStore(fileName,'r')
-	df = store['df']
-	store.close()
+# Load a parquet from disk
+def getDataFromDisk(fileName='data.parquet'):
+	df=pd.read_parquet(fileName)
+	#store = pd.HDFStore(fileName,'r')
+	#df = store['df']
+	#store.close()
 	return df
 
-# Takes data from the main table and scrapes additional attributes from each individual post page
+# Takes data from the main search results page and scrapes additional attributes by crawling through each individual post page
 def getMissingInformation(df,limit=12000):
 	missingData = df.loc[df['attributes'] == '']
 	limitCounter = 0
@@ -190,7 +191,7 @@ def getMissingInformation(df,limit=12000):
 		numberMissing = len(missingData.index)
 		print(numberMissing,"RECORDS WITHOUT ATTRIBUTE DATA")
 
-	for i in missingData['pid']:
+	for i in missingData.index:
 		limitCounter += 1
 		if limitCounter <= limit:
 			thisURL = missingData.loc[i,'url']
@@ -280,7 +281,7 @@ def purgeMissingData(df):
 	return goodData
 
 # Convert BeautifulSoup results to apartment objects and then to a dataframe
-def saveNewListings(apartments, fileName='data.h5',mode='merge'):
+def saveNewListings(apartments, fileName='data.parquet',mode='merge'):
 	if mode == 'overwrite':
 		postsID = []
 		postsDate = []
@@ -295,8 +296,7 @@ def saveNewListings(apartments, fileName='data.h5',mode='merge'):
 		postsLat = []
 		postsLon = []
 	if mode == 'merge':
-		store = pd.HDFStore(fileName,'r')
-		dfSaved = store['df']
+		dfSaved = getDataFromDisk(fileName)
 		postsID = dfSaved['pid'].tolist()
 		postsDate = dfSaved['date'].tolist()
 		postsHood = dfSaved['neighborhood'].tolist()
@@ -309,7 +309,6 @@ def saveNewListings(apartments, fileName='data.h5',mode='merge'):
 		postsAttr = dfSaved['attributes'].tolist()
 		postsLat = dfSaved['latitude'].tolist()
 		postsLon = dfSaved['longitude'].tolist()
-		store.close()
 		
 
 
@@ -327,8 +326,10 @@ def saveNewListings(apartments, fileName='data.h5',mode='merge'):
 		postsAttr.append(a.attr)
 		postsLat.append(a.lat)
 		postsLon.append(a.lon)
-	
 
+	
+	postsLat = pd.to_numeric(postsLat)
+	postsLon = pd.to_numeric(postsLon)
 	dfNew = pd.DataFrame({'pid': postsID,
 		'date': postsDate,
 		'neighborhood': postsHood,
@@ -341,13 +342,10 @@ def saveNewListings(apartments, fileName='data.h5',mode='merge'):
 		'attributes': postsAttr,
 		'latitude': postsLat,
 		'longitude': postsLon
-		}, index=postsID)
+		})
 
 	dfNew.drop_duplicates(subset=['pid'],inplace=True, keep='last')
-
-	store = pd.HDFStore(fileName,'w')
-	store['df'] = dfNew
-	store.close()
+	dfNew.to_parquet(fileName)
 
 	if debug:
 		# If debugging, also save as csv for easy import and viewing
@@ -358,13 +356,11 @@ def saveNewListings(apartments, fileName='data.h5',mode='merge'):
 	return dfNew
 
 # Save dataframe
-def saveDataFrame(df,key='df',fileName='data.h5'):
+def saveDataFrame(df,key='df',fileName='data.parquet'):
 	try:
-		hdfinterface = pd.HDFStore(fileName,'w')
-		hdfinterface[key] = df
-		hdfinterface.close()
+		df.to_parquet(fileName)
 	except:
-		print("Error saving",key,"to",filename)
+		print("Error saving",key,"to",fileName)
 		exit(1)
 
 def main():
@@ -383,7 +379,7 @@ def main():
 		default="https://sfbay.craigslist.org/search/pen/apa?hasPic=1&availabilityMode=0&sale_date=all+dates",
 		type=str, metavar="URL",dest="url",help="URL of the first craigslist page to begin collecting data from [default: %(default)s]")
 	parser.add_argument("-f", "--filename",
-        metavar="FILE", dest="fileName", default="data.h5", help="use %(metavar)s to load and store data on disk [default: %(default)s]")
+        metavar="FILE", dest="fileName", default="data.parquet", help="use %(metavar)s to load and store data on disk [default: %(default)s]")
 	parser.add_argument("-m", "--mode",
                   default="merge",
                   dest='mode', type=str,
@@ -402,7 +398,7 @@ def main():
 	fileName = args.fileName
 	if args.numberofListings < 0:
 		parser.print_help()
-		print("You can't specify a negative number of posts, doofus!")
+		print("You can't specify a negative number of posts, bro!")
 		exit(1)
 	else:
 		numberofListings = args.numberofListings
@@ -424,18 +420,15 @@ def main():
 			print("\ncreated from SOURCE DATA:")
 			print(p)
 
-	# Save listings as data frame and to disk (in HDF5 format)
+	# Save listings as data frame and to disk
 	# The 'merge' mode will merge the new posts with previously saved posts into one table
 	saveNewListings(apartments, fileName, mode=writeMode)
 	topLevel=getDataFromDisk(fileName)
-	topLevel=getMissingInformation(topLevel,limit=120)
-	print(topLevel.tail())
+	topLevel=getMissingInformation(topLevel,limit=120)	
+	topLevel.to_parquet('data.parquet')
 
-	store = pd.HDFStore(fileName,'w')
-	store['df'] = topLevel
 	if debug:
 		topLevel.to_csv('debug.csv')
-	store.close()
 
 
 	exit(0)
