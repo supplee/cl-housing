@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import sys
 import re
 import random
-import h5py
+import numpy as np
 import pandas as pd
 from argparse import ArgumentParser
 
@@ -33,14 +33,14 @@ class Apartment:
 		self.pid = -1
 		self.title = 'missing'
 		self.date = ''
-		self.price = -1
+		self.price = np.nan
 		self.hood = 'missing'
-		self.rooms = -1
+		self.rooms = np.nan
 		self.bathrooms = 0
-		self.area = -1
+		self.area = np.nan
 		self.attr = ''
-		self.lat = ''
-		self.lon = ''
+		self.lat = np.nan
+		self.lon = np.nan
 
 		if debug:
 			print("\nNEW APARTMENT CREATED")
@@ -211,8 +211,8 @@ def getMissingInformation(df,limit=12000):
 				latData = html_soup.find('div',class_='viewposting')['data-latitude']
 				lonData = html_soup.find('div',class_='viewposting')['data-longitude']
 			except:
-				latData = 0.00
-				lonData = 0.00
+				latData = np.nan
+				lonData = np.nan
 			df.at[i,'latitude'] = latData
 			df.at[i,'longitude'] = lonData
 
@@ -398,7 +398,7 @@ def main():
 	fileName = args.fileName
 	if args.numberofListings < 0:
 		parser.print_help()
-		print("You can't specify a negative number of posts, bro!")
+		print("You can't specify a negative number of posts, dude!")
 		exit(1)
 	else:
 		numberofListings = args.numberofListings
